@@ -1,0 +1,46 @@
+name: ci-cd
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGION: ${{ secrets.REGION }}
+      REPO: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/yolo11n
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up gcloud auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDP }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker auth
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & Push images
+        run: |
+          docker build -t $REPO/backend:latest ./backend
+          docker push $REPO/backend:latest
+          docker build -t $REPO/worker:latest ./worker
+          docker push $REPO/worker:latest
+          docker build -t $REPO/dispatcher:latest ./dispatcher
+          docker push $REPO/dispatcher:latest
+
+      - name: Terraform Init & Apply
+        working-directory: infra/terraform
+        run: |
+          terraform init -input=false
+          terraform apply -auto-approve -input=false -var="project_id=$PROJECT_ID" -var="region=$REGION" -var="repo_location=$REGION" -var="bucket_name=yolo11n-datasets-${PROJECT_ID}"

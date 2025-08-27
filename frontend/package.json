@@ -1,0 +1,16 @@
+{
+  "name": "nuxt-yolo-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev -o",
+    "build": "nuxt build",
+    "preview": "node .output/server/index.mjs"
+  },
+  "dependencies": {
+    "@nuxtjs/tailwindcss": "6.12.1",
+    "dayjs": "^1.11.11",
+    "nuxt": "^3.18.1"
+  }
+}
